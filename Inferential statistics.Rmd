@@ -1,0 +1,190 @@
+---
+title: "Ali Sarabandi"
+author: "Mid-Term Inferential Statistics"
+date: "21-12-2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# Exercise
+
+A climbing route is a path by which a climber reaches the top of a mountain, rock, or ice wall. Routes can vary dramatically in difficulty and grade; once committed to that ascent, it can sometimes be difficult to stop or return. Choice of route can be critically important. Guidebooks, if available, are helpful in providing detailed diagrams and photographs of routes. A book company was evaluating to product a book with different routes choices for man and woman, for this reason a survey has been conducted on a sample of 1000 climbers ( recorded in the dataset DF_media) during variuous years. Gender, grades_mean and several variables were recorded. The idea is to include routes with a lower grade of difficulty for woman. Is there enough evidence to support that female have an average grade (grades_mean) lower than the one of males? 
+Verify this claim by using the traditional and non traditional approach with alpha equal to 95%. 
+
+As part of your answer please...
+
+1. Define parameters and state null and alternative hypothesis for the test. (2 marks)
+2. Compute the point estimate and standard error for the used Statistic.  (3 marks)
+3. The computer output provides a test statistic. Show how it is calculated. (3 marks)
+4. Summarize the results of the hypothesis test in context. (2 marks)
+5. Create a confidence interval for the unknown population parameter using our sample data with bootstraping. Give an interpratation to the obtained results. (4 marks)
+6. Observing the bootstrap distribution and the null distribution that were created, what we can conclude? (2 marks)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+DFmedia<- read.csv("dataset_test3.csv")
+library(tidyverse)
+library(infer)
+```
+
+null hypothesis: female have an average grade equal  to the male
+alternative hypothesis: female have an average grade lower than the males
+It’s important to set the significance level before starting the testing using the data. which here is 0.05.
+
+
+```{r}
+grade_summ <- DFmedia %>%
+  group_by(sex) %>%
+  summarize(
+    sample_size = n(),
+    mean = mean(grades_mean),
+    sd = sd(grades_mean),
+    minimum = min(grades_mean),
+    lower_quartile = quantile(grades_mean, 0.25),
+    median = median(grades_mean),
+    upper_quartile = quantile(grades_mean, 0.75),
+    max = max(grades_mean)
+  )
+```
+
+standard error and pointestimator can be computed as following:
+```{r}
+sdfemale= grade_summ$sd[1]
+sdmale= grade_summ$sd[2]
+dffemale= 480-1
+dfmale= 520-1
+SE = sqrt((dffemale)*(sdfemale^2)+(dfmale)*(sdmale^2)/(dffemale+dfmale))*sqrt((1/520)+(1/480))
+pointestimate= grade_summ$mean[1]- grade_summ$mean[2]
+data.frame(as.numeric(SE),pointestimate)
+```
+
+
+The boxplot here also shows the mean for each group which shows by the blue points.
+
+```{r}
+ggplot(DFmedia, aes(x = sex, y = grades_mean)) +
+  geom_boxplot() +
+  stat_summary(fun = "mean", geom = "point", color = "blue")
+```
+We are looking to see if a difference exists in the mean grades of the two levels of the explanatory variable which in this case is gender.
+
+##Non-traditional methods
+```{r}
+d_hat <- DFmedia %>%
+  specify(grades_mean ~ sex) %>%
+  calculate(
+    stat = "diff in means",
+    order = c("F", "M")
+  )
+d_hat
+```
+In order to look to see if the observed sample mean for females of 44.20545 is statistically different than that for male of 48.92493, we need consider the sample sizes.
+
+```{r}
+set.seed(2018)
+null_diffr_two_means <- DFmedia %>%
+  specify(grades_mean ~ sex) %>%
+  hypothesize(null = "independence") %>%
+  generate(reps = 10000, type= "permute") %>%
+  calculate(
+    stat = "diff in means",
+    order = c("F", "M")
+  )
+```
+
+```{r}
+null_diffr_two_means %>% visualize()
+
+```
+
+We can use this distribution to observe our p value. This is a two-tailed test.
+
+```{r}
+null_diffr_two_means %>%
+  visualize() +
+  shade_p_value(obs_stat = d_hat, direction = "left")
+```
+
+so as you see the p value is far from our distribution so we reject the null hypothesis.
+
+now we calculate p value
+
+```{r}
+pvalue <- null_diffr_two_means %>%
+  get_pvalue(obs_stat = d_hat, direction = "left")
+pvalue
+```
+So our pvalue is 0 so we reject the null hypothesis at the 0.05 level of significant. You can also conlude this from the histogram above that we are very far from the distribution.
+
+now im gonna do the Bootstrapping for confidence interval
+
+```{r}
+boot_diffr_two_means <- DFmedia %>%
+  specify(grades_mean ~ sex) %>%
+  generate(reps = 10000, type = "bootstrap") %>%
+  calculate(
+    stat = "diff in means",
+    order = c("F", "M"))
+```
+
+```{r}
+ci <- boot_diffr_two_means %>%
+  get_ci()
+ci
+```
+
+```{r}
+boot_diffr_two_means %>%
+  visualize() +
+  shade_ci(endpoints = ci)
+```
+
+We see that 0 is not contained in this confidence interval as a plausible value of the population parameter. This matches with our hypothesis test results of rejecting the null hypothesis. Since zero is a plausible value of the population parameter, we do not have evidence that female have an average grade equal or greater to the male.
+
+ We are 95% confident the true grades mean for female and male is between -5.748401 to -3.654263.
+ 
+##Traditional methods
+
+first we need to Check conditions
+
+1.Independent observations: The observations are independent in both groups.(we assume)
+
+This sex variable is met since the cases are randomly selected.
+
+2.Approximately normal: The distribution of the response for each group should be normal or the sample sizes should be at least 30.
+as you see here the sample size is big (>30)
+
+```{r}
+ggplot(DFmedia, aes(x = grades_mean)) +
+  geom_histogram(color = "red", binwidth = 20000) +
+  facet_wrap(~sex)
+```
+
+3.Independent samples: The samples should be collected without any natural pairing.
+
+There is no mention of there being a relationship between those selected in female and in male.
+
+
+
+Observed test statistic
+
+```{r}
+DFmedia %>%
+  specify(grades_mean ~ sex) %>%
+  calculate(
+    stat = "t",
+    order = c("F", "M"))
+```
+We see here that the observed test statistic value is around -8.932985.
+
+The p-value the probability of observing an value of -8.932985 or more extreme.
+
+```{r}
+2 * pt(-8.932985, df = min(480 - 1, 520 - 1), lower.tail = TRUE)
+
+```
+
+We, therefore, we have sufficient evidence to reject the null hypothesis. Our initial guess that a statistically significant difference not existing in the means was backed by this statistical analysis. We have evidence to suggest that the true grades means differs between female, and male based on this data.
+
