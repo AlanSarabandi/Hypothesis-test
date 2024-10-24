@@ -1,3 +1,6 @@
+
+```{r}
+
 ---
 title: "Inferential Statistics"
 author: "Ali Sarabandi"
@@ -188,3 +191,4 @@ The p-value the probability of observing an value of -8.932985 or more extreme.
 
 We, therefore, we have sufficient evidence to reject the null hypothesis. Our initial guess that a statistically significant difference not existing in the means was backed by this statistical analysis. We have evidence to suggest that the true grades means differs between female, and male based on this data.
 
+```
