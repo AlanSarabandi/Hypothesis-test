@@ -1,6 +1,6 @@
 ---
-title: "Ali Sarabandi"
-author: "Mid-Term Inferential Statistics"
+title: "Inferential Statistics"
+author: "Ali Sarabandi"
 date: "21-12-2022"
 output:
   html_document: default
